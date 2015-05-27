@@ -1,0 +1,24 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=5182
+
+This plug-in is to help send requests to and display responses from RESTful
+services in Vim. It's useful for working with REST services that use JSON to
+exchange information between server and client such as ElasticSearch.
+
+Requirements:
+  * cURL
+  * Vim 7.4 (might work with the older versions)
+
+Features:
+
+* Execute REST request and display the response on a separate display buffer.
+* Make changing/adjusting request body easy.
+* Can have multiple REST request blocks per VRC buffer.
+* Can have multiple VRC buffers where they all share the same output buffer or
+  each can have its own output buffer.
+* Particularly useful for working with REST services that require the request
+  body to be sent in JSON such as ElasticSearch.
+* Syntax highlighting.
+
+For more information
+
+http://github.com/diepm/vim-rest-console
