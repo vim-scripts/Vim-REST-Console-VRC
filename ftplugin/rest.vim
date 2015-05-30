@@ -98,6 +98,13 @@ function! s:CallCurl(request)
         call add(curlArgs, '-k')
     endif
 
+    """ Add --cookie-jar
+    let cookieJar = s:GetOptValue('vrc_cookie_jar', 0)
+    if !empty(cookieJar)
+        call add(curlArgs, '-b ' . shellescape(cookieJar))
+        call add(curlArgs, '-c ' . shellescape(cookieJar))
+    endif
+
     """ Add headers.
     let hasContentType = 0
     for key in keys(a:request.headers)
@@ -211,4 +218,6 @@ function! VrcMap()
     execute 'inoremap ' . triggerKey . ' <Esc>:call VrcQuery()<CR>'
 endfunction
 
-call VrcMap()
+if s:GetOptValue('vrc_set_default_mapping', 1)
+    call VrcMap()
+endif

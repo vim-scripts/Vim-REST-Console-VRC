@@ -223,6 +223,28 @@ It can also be set in the buffer scope by
 
 If `Content-Type` is specified in the request block, it overrides this setting.
 
+#### `vrc_cookie_jar`
+
+This option enables persisting cookies between requests in a cookie jar file.
+Useful when the underlying API uses session or authorization cookies.
+
+    let g:vrc_cookie_jar = '/tmp/vrc_cookie_jar'
+
+It can also be set in the buffer scope by
+
+    let b:vrc_cookie_jar = './jar'
+
+#### `vrc_set_default_mapping`
+
+This option is to enable/disable the trigger key mapping. It's enabled by
+default. To disable the mapping,
+
+    let g:vrc_set_default_mapping = 0
+
+Once the mapping is disabled, the request block can be executed by
+
+    :call VrcQuery()
+
 #### `vrc_nl_sep_post_data_patterns`
 
 The *optional request body* usually spans multiple lines. VRC has to combine
@@ -260,6 +282,15 @@ Need to improve the request body parsing so that for non-JSON request, it can
 send each line of the data to cURL using a separate `--data` or
 `--data-urlencode`.
 
-### 8. License
+### 8. Contributors
+
+Thanks to the contributors (in alphabetical order)
+
+@dan-silva
+@jojoyuji
+@korin
+@tonyskn
+
+### 9. License
 
 MIT
