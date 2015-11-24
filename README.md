@@ -6,6 +6,9 @@
 RESTful services in Vim. It's useful for working with REST services that use
 JSON to exchange information between server and client such as ElasticSearch.
 
+VRC can also be used as a cURL client for simple needs such as getting a
+HTTP page response or posting to a form.
+
 Requirements:
 
 * cURL
@@ -260,8 +263,11 @@ disable
 
     let g:vrc_include_response_header = 0
 
-If this option is disabled, the auto-formatting response options
-`vrc_auto_format_response_*` below will not take effect.
+If this option is disabled, the following options will not take effect.
+
+* `vrc_auto_format_response_enabled`
+* `vrc_auto_format_response_patterns`
+* `vrc_syntax_highlight_response`
 
 #### `vrc_auto_format_response_enabled`
 
@@ -293,26 +299,14 @@ Adjust the list by defining the global or buffer variable, like so:
 
 If `vrc_include_response_header` is disabled, this option does nothing.
 
-#### `vrc_nl_sep_post_data_patterns`
+#### `vrc_syntax_highlight_response`
 
-The *optional request body* usually spans multiple lines. VRC has to combine
-them before passing to cURL. By default, VRC uses the empty string as the
-separator; however, some services such as ElasticSearch need the newline
-characters (`\n`) for some queries (e.g., `_bulk`).
+This option enables the syntax highlighting of the response body according to
+the Content-Type. It's enabled by default. To disable:
 
-This option is a list of patterns to tell VRC to join the optional request
-body using the newline character when the query path such as
+    let g:vrc_syntax_highlight_response = 0
 
-    GET /path/to/resource
-
-matches any pattern in the list.
-
-This option defaults to `['\v\W?_bulk\W?']`. To add new patterns,
-
-    let g:vrc_nl_sep_post_data_patterns = [
-    \   '\v\W?_bulk\W?',
-    \   'OtherPattern',
-    \]
+If `vrc_include_response_header` is disabled, this option does nothing.
 
 #### `vrc_debug`
 
@@ -322,29 +316,29 @@ default.
 
 ### 7. Tips 'n Tricks
 
-If the appropriate ftplugin is installed, it is very easy to enable output
-syntax highlighting (especially for JSON) with this in your `.vimrc`:
+#### 7.1 POST Data in Bulk
 
-    let g:vrc_output_buffer_name = '__VRC_OUTPUT.json'
+Since v2.0, VRC supports POSTing data in bulk using an external data file.
+It's helpful for such APIs as ElasticSearch's Bulk API.
 
-`filetype` of an output buffer can also be set to the corresponding type
-using `set ft=...`. Alternatively, it might be possible to set it per request
-buffer using a special modeline (requiring
-[let-modeline](http://www.vim.org/scripts/script.php?script_id=83)):
+    http://localhost:9200
+    POST /testindex/_bulk
+    @data.sample.json
 
-    # vim: let b:vrc_output_buffer_name = '__VRC_OUTPUT.json'
+#### 7.2 Syntax Highlighting
 
-### 8. TODOs
+Though VRC supports output syntax highlighting, it's based on the response
+Content-Type. When Content-Type is not present, the output can still be
+syntax-highlighted if the appropriate ftplugin is installed. To force the
+output highlighting based on `filetype`, place this setting in `.vimrc`:
 
-Currently, VRC combines the request body as a whole and passes it to cURL
-using the `--data` or `--data-urlencode` option. It's useful for working with
-JSON request body but not convenient for non-JSON data.
+    let g:vrc_output_buffer_name = '__VRC_OUTPUT.<filetype>'
 
-Need to improve the request body parsing so that for non-JSON request, it can
-send each line of the data to cURL using a separate `--data` or
-`--data-urlencode`.
+`filetype` can also be set in the output buffer on an ad hoc basis.
 
-### 9. Contributors
+    # vim: set ft=json
+
+### 8. Contributors
 
 Thanks to the contributors (in alphabetical order)
 
@@ -352,10 +346,23 @@ Thanks to the contributors (in alphabetical order)
     @jojoyuji
     @korin
     @mjakl
-    @shanesmith
     @sethtrain
+    @shanesmith
     @tonyskn
     @torbjornvatn
+
+### 9. Changelog
+
+#### 2.0.0 (2015-11-24)
+
+* Support POST data from external files.
+* Proper use of cURL commands for HTTP verbs.
+* Request body is sent based on HTTP verbs.
+  - GET, HEAD, DELETE: as GET params.
+  - POST, PUT: as POST params.
+* Remove awkward syntaxes.
+  - Option `vrc_nl_sep_post_data_patterns` removed.
+  - GET params can be specified in request body.
 
 ### 10. License
 

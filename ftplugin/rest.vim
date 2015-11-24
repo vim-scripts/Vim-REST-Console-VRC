@@ -82,12 +82,7 @@ function! s:ParseRequest(listLines)
     endif
 
     """ Parse http verb and query path.
-    let [httpVerb, queryPath; urlEncodeData] = split(restQuery)
-    let nlSepBodyPattern = join(
-    \   s:GetOptValue('vrc_nl_sep_post_data_patterns', ['\v\W?_bulk\W?']),
-    \   '|'
-    \)
-    let joinSep = (queryPath =~ nlSepBodyPattern) ? "\n" : ''
+    let [httpVerb; queryPath] = split(restQuery)
     return {
     \   'success': 1,
     \   'msg': '',
@@ -95,9 +90,8 @@ function! s:ParseRequest(listLines)
     \   'useSsl': useSsl,
     \   'headers': headers,
     \   'httpVerb': httpVerb,
-    \   'requestPath': queryPath,
-    \   'urlEncodeData': join(urlEncodeData),
-    \   'dataBody': join(a:listLines[i :], joinSep)
+    \   'requestPath': join(queryPath, ''),
+    \   'dataBody': join(a:listLines[i :], '')
     \}
 endfunction
 
@@ -149,20 +143,26 @@ function! s:CallCurl(request)
         call add(curlArgs, '--get')
     elseif httpVerb ==? 'HEAD'
         call add(curlArgs, '--head')
-    else
+    elseif httpVerb !=? 'POST'
+        """ Use -X/--request for any verbs other than POST.
         call add(curlArgs, '-X ' . httpVerb)
-    endif
-
-    """ Add --data-urlencode for GET and HEAD.
-    let verbGetOrHead = httpVerb ==? 'GET' || httpVerb ==? 'HEAD'
-    if !empty(a:request.urlEncodeData) && verbGetOrHead
-        call add(curlArgs, '--data-urlencode ' . shellescape(a:request.urlEncodeData))
     endif
 
     """ Add data body.
     if !empty(a:request.dataBody)
-        let dataOpt = verbGetOrHead ? '--data-urlencode' : '--data'
-        call add(curlArgs, dataOpt . ' ' . shellescape(a:request.dataBody))
+        let dataBody = shellescape(a:request.dataBody)
+        if httpVerb ==? 'GET' || httpVerb ==? 'HEAD' || httpVerb ==? 'DELETE'
+            """ These verbs should not have request body. Make it as GET params.
+            call add(curlArgs, '--data-urlencode ' . dataBody)
+        elseif httpVerb ==? 'POST' || httpVerb ==? 'PUT'
+            """ Should load from a file? (dataBody is already shell-escaped).
+            if stridx(dataBody, '@') == 1
+                """ Load from a file.
+                call add(curlArgs, '--data-binary ' . dataBody)
+            else
+                call add(curlArgs, '--data ' . dataBody)
+            endif
+        endif
     endif
 
     """ Execute the CURL command.
@@ -178,6 +178,7 @@ endfunction
 function! s:DisplayOutput(tmpBufName, output)
     """ Get view options before working in the view buffer.
     let autoFormatResponse = s:GetOptValue('vrc_auto_format_response_enabled', 1)
+    let syntaxHighlightResponse = s:GetOptValue('vrc_syntax_highlight_response', 1)
 
     """ Setup view.
     let origWin = winnr()
@@ -196,20 +197,21 @@ function! s:DisplayOutput(tmpBufName, output)
     silent! normal! ggdG
     call setline('.', split(substitute(a:output, '[[:return:]]', '', 'g'), '\v\n'))
 
-    """ Auto-format the response.
-    if autoFormatResponse
-        call cursor(1, 0)
-        let emptyLineNum = search('\v^\s*$', 'n')
-        let contentTypeLineNum = search('\v^Content-Type:', 'n', emptyLineNum)
+    call cursor(1, 0)
+    let emptyLineNum = search('\v^\s*$', 'n')
+    let contentTypeLineNum = search('\v\c^Content-Type:', 'n', emptyLineNum)
 
-        if contentTypeLineNum > 0
-            let contentType = substitute(
-            \   getline(contentTypeLineNum),
-            \   '\v^Content-Type:\s*([^;[:blank:]]*).*$',
-            \   '\1',
-            \   'g'
-            \)
-            let fileType = substitute(contentType, '\v^.*/(.*\+)?(.*)$', '\2', 'g')
+    if contentTypeLineNum > 0
+        let contentType = substitute(
+              \   getline(contentTypeLineNum),
+              \   '\v\c^Content-Type:\s*([^;[:blank:]]*).*$',
+              \   '\1',
+              \   'g'
+              \)
+        let fileType = substitute(contentType, '\v^.*/(.*\+)?(.*)$', '\2', 'g')
+
+        """ Auto-format the response.
+        if autoFormatResponse
             let formatCmd = s:GetDictValue('vrc_auto_format_response_patterns', fileType, '')
 
             if !empty(formatCmd)
@@ -222,10 +224,20 @@ function! s:DisplayOutput(tmpBufName, output)
                     execute (emptyLineNum + 1) . ',$delete _'
                     call append('$', split(formattedBody, '\v\n'))
                 elseif s:GetOptValue('vrc_debug', 0)
-                    echom "VRC: aut-format error: " . v:shell_error
+                    echom "VRC: auto-format error: " . v:shell_error
                     echom formattedBody
                 endif
             endif
+        endif
+
+        """ Syntax-highlight response.
+        if syntaxHighlightResponse
+            syntax clear
+            try
+                execute "syntax include @vrc_" . fileType . " syntax/" . fileType . ".vim"
+                execute "syntax region body start=/^$/ end=/\%$/ contains=@vrc_" . fileType
+            catch
+            endtry
         endif
     endif
 
@@ -275,9 +287,9 @@ endfunction
 
 function! VrcMap()
     let triggerKey = s:GetOptValue('vrc_trigger', '<C-j>')
-    execute 'vnoremap ' . triggerKey . ' :call VrcQuery()<CR>'
-    execute 'nnoremap ' . triggerKey . ' <Esc>:call VrcQuery()<CR>'
-    execute 'inoremap ' . triggerKey . ' <Esc>:call VrcQuery()<CR>'
+    execute 'vnoremap <buffer> ' . triggerKey . ' :call VrcQuery()<CR>'
+    execute 'nnoremap <buffer> ' . triggerKey . ' :call VrcQuery()<CR>'
+    execute 'inoremap <buffer> ' . triggerKey . ' <Esc>:call VrcQuery()<CR>'
 endfunction
 
 if s:GetOptValue('vrc_set_default_mapping', 1)

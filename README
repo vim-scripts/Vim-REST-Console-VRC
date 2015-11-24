@@ -4,6 +4,9 @@ This plug-in is to help send requests to and display responses from RESTful
 services in Vim. It's useful for working with REST services that use JSON to
 exchange information between server and client such as ElasticSearch.
 
+VRC can be used as a cURL client  for simple needs such as getting a
+HTTP page response or posting to a form.
+
 Requirements:
   * cURL
   * Vim 7.4 (might work with the older versions)
